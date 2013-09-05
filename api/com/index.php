@@ -17,16 +17,19 @@
         }
         include $file;
     }
+  /*** register the loader functions ***/
+  spl_autoload_register('classLoader');
+  
+  error_log(var_export($_REQUEST['req'], TRUE));
 
-    /*** register the loader functions ***/
-    spl_autoload_register('classLoader');
+  if(!isset($_REQUEST['req'])) {
+    error_log(var_export($_REQUEST, TRUE));
+    $response = 'Error missing request params';
+  } else {
+    $req = json_decode($_REQUEST['req']);
+    $rh = new RequestHandler();
+    $response = $rh->handle($req);
+  }
+  print $response;
 
-$dbHandler = new DbHandler;
-$appList = $dbHandler->fetchApplist('simon');
-print json_encode(
-  array(
-    'ListResp' => array(
-      'apps' => $appList
-    )
-  )
-);
+

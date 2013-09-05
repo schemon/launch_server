@@ -10,17 +10,25 @@
      } 
 
      public function fetchAppList($owner = NULL) {
-       $result = array();	
-       $apps = $this->dbh->query('select * from app_list;')->fetchAll(PDO::FETCH_OBJ);
+       $result = array();
+       $attr0 = $this->dbh->quote($owner);
+       $queryString = 'select * from app_list where owner like ' . $attr0 . ';';
+       $queryResult = $this->performQuery($queryString);
+       $apps = $queryResult->fetchAll(PDO::FETCH_OBJ);
        foreach($apps as $app) {
          $appTile = new StdClass();
-         $appTile->package_name = $app->package_name;
+         $appTile->packageName = $app->package_name;
          $appTile->position = $app->position;
          $appTile->title = $app->title;
-         $appTile->icon_url = $app->icon_url;
-
-         $result[] = $appTile;
+         $appTile->iconUri = $app->icon_url;
+         $item = new StdClass();
+         $item->appTile = $appTile;
+         $result[] = $item;
        }
        return $result; 
-     }  
+     }
+
+     private function performQuery($queryString) {
+       return $this->dbh->query($queryString);
+     }
   }
