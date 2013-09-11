@@ -28,7 +28,49 @@
        return $result; 
      }
 
+    public function saveDeviceInfo($info) {
+      $device_token = $this->dbh->quote($info->deviceToken);
+      $launcher_id = $this->dbh->quote($info->launcherId);
+      $android_id = $this->dbh->quote($info->androidId);
+      $gcm_registration_id = $this->dbh->quote($info->gcmRegistrationId);
+      
+      $queryString = 
+        'INSERT INTO device 
+         (device_token, launcher_id, android_id, gcm_registration_id)
+         values('
+         . $device_token
+         . ',' . $launcher_id
+         . ',' . $android_id
+         . ',' . $gcm_registration_id
+         . ')'
+         . ' ON DUPLICATE KEY UPDATE '
+         . 'launcher_id' . '=' . $launcher_id
+         . ',' . 'android_id' . '=' . $android_id
+         . ',' . 'gcm_registration_id' . '=' . $gcm_registration_id
+         . ';';
+
+      $queryResult = $this->performQuery($queryString);
+      $numOfChangedRows = $queryResult->rowCount();
+      $result = 0;
+      if(1 === $numOfChangedRows) {
+        $result = 1;
+      }
+      return $result; 
+   }
+
+   public function getGcmRegistrationIds($launcherId) {
+     $launcher_id = $this->dbh->quote($launcherId);
+     $queryString = 
+       'SELECT DISTINCT gcm_registration_id FROM device 
+        WHERE launcher_id = ' . $launcher_id . ';';
+
+     $result = $this->performQuery($queryString)->fetchAll(PDO::FETCH_COLUMN);
+     error_log(var_export($result, TRUE));
+     return $result;
+   }
+
      private function performQuery($queryString) {
        return $this->dbh->query($queryString);
      }
+
   }

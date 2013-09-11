@@ -11,8 +11,28 @@
       position INT DEFAULT -1,
       package_name VARCHAR(255) NOT NULL,
       title VARCHAR(255),
-      icon_url VARCHAR(255));');
-
+      icon_url VARCHAR(255));'
+  );
   var_dump($result);
 
+
+  $result = $dbh->query(
+    'CREATE TABLE IF NOT EXISTS device (
+      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      device_token VARCHAR(255) NOT NULL,
+      launcher_id VARCHAR(255) NOT NULL,
+      android_id VARCHAR(255) NULL,
+      gcm_registration_id VARCHAR(255));'
+  );
+  var_dump($result);
+
+  $result = $dbh->query(
+    'ALTER TABLE device ADD UNIQUE (device_token)');
+  var_dump($result);
+
+  $result = $dbh->query(
+    'CREATE TABLE IF NOT EXISTS launcher (
+      id VARCHAR(255) PRIMARY KEY);'
+  );
+  var_dump($result);
 
