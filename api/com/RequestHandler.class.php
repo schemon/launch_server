@@ -5,11 +5,19 @@
     public function handle($req) {
 
       if(isset($req->ListReq)) {
+        $launcher_id = $req->ListReq->launcherId; 
         $dbHandler = new DbHandler();
-        $appList = $dbHandler->fetchApplist($req->ListReq->launcherId);
+        if(isset($req->ListReq->revision)) {
+          $app_list_id = $req->ListReq->revision;
+        } else { 
+          $launcher = $dbHandler->getLiveAppListId($launcher_id);
+          $app_list_id = $launcher->live_app_list_rev;
+        }
+
+        $appList = $dbHandler->fetchApplist($app_list_id);
         $response = array(
           'ListResp' => array(
-            'revision' => 1,
+            'revision' => $app_list_id,
             'tile' => $appList
           )
         );
@@ -27,6 +35,81 @@
         $response = array(
           'PerformPushResp' => array(
             'result' => $result,
+          )
+        );
+      } else if(isset($req->CrawlAppReq)) {
+        $package_name = $req->CrawlAppReq->packageName;
+        $crawler = new GooglePlayCrawler();
+        $result = $crawler->crawlApp($package_name);
+        $response = array(
+          'CrawlAppResp' => array(
+            'result' => $result,
+          )
+        );
+      } else if(isset($req->AddToListReq)) {
+        $appListHandler = new AppListHandler();
+        $result = $appListHandler->addApp($req->AddToListReq); 
+        $response = array(
+          'AddToListResp' => array(
+            'result' => $result,
+          )
+        );
+      } else if(isset($req->RemoveFromListReq)) {
+        $appListHandler = new AppListHandler();
+        $result = $appListHandler->removeApp($req->RemoveFromListReq);
+        $response = array(
+          'RemoveFromListResp' => array(
+            'result' => $result,
+          )
+        );
+      } else if(isset($req->NewListRevisionReq)) {
+        $appListHandler = new AppListHandler();
+        $result = $appListHandler->newList($req->NewListRevisionReq);
+        $response = array(
+          'NewListRevisionResp' => array(
+            'result' => $result,
+          )
+        );
+      } else if(isset($req->DeleteListRevisionReq)) {
+        $appListHandler = new AppListHandler();
+        $result = $appListHandler->deleteList($req->DeleteListRevisionReq);
+        $response = array(
+          'DeleteListRevisionResp' => array(
+            'result' => $result,
+          )
+        );
+      } else if(isset($req->ListRevisionReq)) {
+        $appListHandler = new AppListHandler();
+        $result = $appListHandler->getListAll($req->ListRevisionReq);
+        $response = array(
+          'ListRevisionResp' => array(
+            'result' => $result,
+          )
+        );
+      } else if(isset($req->PublishListReq)) {
+        $launcher_id = $req->PublishListReq->launcherId;
+        $app_list_id = $req->PublishListReq->appListId;
+        $launcherHandler = new LauncherHandler();
+        $result = $launcherHandler->setLiveAppList($app_list_id, $launcher_id);
+        
+        if($result) {
+          $gcmHandler = new GcmHandler();
+          $push_req = (object) array(
+            'launcherId' => $launcher_id,
+            'CloudReq' => (object) array(
+              'AppListUpdateInfo' => (object) array(
+                'revision' => $app_list_id,
+              ),
+            ),
+          );   
+          $push_was_sent = $gcmHandler->performPush($push_req);
+        } else {
+          $push_was_sent = 0;
+        }
+        $response = array(
+          'PublishListReq' => array(
+            'result' => $result,
+            'pushWasSent' => $push_was_sent,
           )
         );
       } else {
