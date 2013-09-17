@@ -9,7 +9,8 @@
       id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
       launcher_id VARCHAR(255) NOT NULL,
       platform VARCHAR(255),
-      has_been_live TINYINT(1));'
+      has_been_live TINYINT(1) DEFAULT 0,
+      changed INT DEFAULT 0);'
   );
   var_dump($result);
 

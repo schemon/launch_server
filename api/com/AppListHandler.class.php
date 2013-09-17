@@ -4,7 +4,13 @@ class AppListHandler {
   
   public function newList($req) {
     $dbHandler = new DbHandler();
-    return $dbHandler->createNewAppList($req->launcherId, $req->platform);
+    $new_list = $dbHandler->createNewAppList($req->launcherId, $req->platform);
+    if(isset($req->baseList)) {
+      $apps = $dbHandler->fetchAppList($req->baseList);
+      $transfered_apps = $this->addAppMultiple($apps, $new_list['list_id']);
+      $new_list['transferedApps'] = $transfered_apps;
+    }
+    return $new_list;
   }
 
   public function deleteList($req) {
@@ -14,7 +20,28 @@ class AppListHandler {
 
   public function getListAll($req) {
     $dbHandler = new DbHandler();
-    return $dbHandler->getAppListAll($req->launcherId);
+    $result = new StdClass();
+    $result->lists = $dbHandler->getAppListAll($req->launcherId);
+    $result->liveList = $dbHandler->getLiveAppListId($req->launcherId);
+    return $result;
+  }
+
+  public function addAppMultiple($apps, $list_id) {
+    $result = true;
+    foreach($apps as $key => $app) {
+      $app_data = (object) array(
+         'appId' =>  $app->appTile->packageName,
+         'appListId' => $list_id,
+         'position' => $app->appTile->position,
+         'latitude' => $app->appTile->latitude,
+         'longitude' => $app->appTile->longitude,
+         );
+      error_log(var_export($app_data, true));
+      if(!$this->addApp($app_data)) {
+        $result = false;
+      }
+    }
+    return $result;
   }
 
   public function addApp($req_data) {
@@ -39,6 +66,12 @@ class AppListHandler {
         $req_data->position,
         $req_data->latitude,
         $req_data->longitude);
+    }
+    if($result) {
+      $new_data = array(
+        'changed' => time(),
+      );
+      $dbHandler->updateList($req_data->appListId, $new_data);
     }
     return $result;
   }

@@ -13,7 +13,7 @@
      public function getAppListAll($launcher_id) {
        $launcher_id = $this->dbh->quote($launcher_id);
        $query_string = '
-         SELECT id FROM app_list '
+         SELECT * FROM app_list '
          . 'WHERE launcher_id LIKE ' . $launcher_id . ';';
        $queryResult = $this->performQuery($query_string);
        $lists = $queryResult->fetchAll(PDO::FETCH_OBJ);
@@ -24,36 +24,85 @@
        $launcher_id = $this->dbh->quote($launcher_id);
        $platform = $this->dbh->quote($platform);
        $query_string = '
-         INSERT INTO app_list (launcher_id, platform)'
+         INSERT INTO app_list (launcher_id, platform, changed)'
          . 'VALUES ('
          . $launcher_id
          . ',' . $platform
+         . ',' . time()
          . ');';
+       $this->performQuery($query_string);
+       $list_id = $this->dbh->lastInsertId();
+       $result = array(
+         'list_id' => $list_id,
+       );
+       return $result;
+     }
+
+     public function updateList($app_list_id, $new_data) {
+       $app_list_id = $this->dbh->quote($app_list_id);
+
+       if(isset($new_data->platform)) {
+        $platform = $this->dbh->quote($new_data->platform);
+       } else {
+        $platform = 'platform';
+       }
+ 
+       if(isset($new_data->has_been_live)) { 
+         $has_been_live = $this->dbh->quote($new_data->has_been_live);
+       } else {
+         $has_been_live = 'has_been_live';
+       }
+
+       if(isset($new_data->changed)) {
+         $changed = $this->dbh->quote($new_data->changed);
+       } else {
+         $changed = 'changed';
+       }
+
+       $query_string = '
+         UPDATE app_list '
+         . ' SET '
+         . ' platform=' . $platform
+         . ', has_been_live=' . $has_been_live
+         . ', changed=' . $changed
+         . ' WHERE id = ' . $app_list_id . ';';
        $result = $this->insert($query_string);
        return $result;
      }
 
      public function deleteList($app_list_id) {
-       $app_list_id = $this->dbh->quote($app_list_id);
-       $query_string = '
-         DELETE FROM app_list WHERE id = ' . $app_list_id . ';';
-       $result = $this->insert($query_string);
+       $list_info = $this->fetchAppListInfo($app_list_id);
+       if($list_info->has_been_live) {
+         $result = 0;
+       } else {
+         $app_list_id = $this->dbh->quote($app_list_id);
+         $query_string = '
+           DELETE FROM app_list WHERE id = ' . $app_list_id . ';';
+         $result = $this->insert($query_string);
+       }
        return $result;
+     }
+
+     public function fetchAppListInfo($id) {
+       $id = $this->dbh->quote($id);
+       $queryString = 'SELECT * FROM app_list WHERE id = ' . $id . ';';
+       $queryResult = $this->performQuery($queryString);
+       return (object) $queryResult->fetch(PDO::FETCH_OBJ);
      }
 
      public function fetchAppList($id = NULL) {
        $result = array();
-       $attr0 = $this->dbh->quote($id);
+       $id = $this->dbh->quote($id);
+
        $queryString = '
-        SELECT * FROM 
-        app_in_list LEFT JOIN app ON app_in_list.app_id = app.id
+        SELECT * FROM app_in_list 
+        LEFT JOIN app ON app_in_list.app_id = app.id
         WHERE 
-        app_list_id = ' . $attr0 .
-        ';';
-       error_log($queryString);
+        app_list_id = ' . $id .
+        ' ORDER BY position ASC;';
        $queryResult = $this->performQuery($queryString);
        $apps = $queryResult->fetchAll(PDO::FETCH_OBJ);
- 
+       
        error_log(var_export($apps, TRUE));     
   
        foreach($apps as $app) {
@@ -169,7 +218,7 @@
     public function getLiveAppListId($launcher_id) {
       $id = $this->dbh->quote($launcher_id);
       $query_string = 'SELECT * FROM launcher WHERE id LIKE ' . $id . ';';
-      $result = $this->performQuery($query_string)->fetch(PDO::FETCH_OBJ);
+      $result = $this->performQuery($query_string)->fetch(PDO::FETCH_OBJ)->live_app_list_rev;
       return $result;
     }
 

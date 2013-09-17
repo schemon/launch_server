@@ -10,14 +10,17 @@
         if(isset($req->ListReq->revision)) {
           $app_list_id = $req->ListReq->revision;
         } else { 
-          $launcher = $dbHandler->getLiveAppListId($launcher_id);
-          $app_list_id = $launcher->live_app_list_rev;
+          $app_list_id = $dbHandler->getLiveAppListId($launcher_id);
         }
+        
+        $list_info = $dbHandler->fetchAppListInfo($app_list_id);
 
+        error_log(var_export($lists, TRUE));
         $appList = $dbHandler->fetchApplist($app_list_id);
         $response = array(
           'ListResp' => array(
             'revision' => $app_list_id,
+            'hasBeenLive' => (int) $list_info->has_been_live,
             'tile' => $appList
           )
         );
