@@ -8,7 +8,6 @@
 </head>
 <body>
 
-  <input type="button" value="load lists" id="button-load-list">
   <div class="lists-holder"></div>
   <div class="list-holder"></div> 
 </body>
@@ -17,46 +16,62 @@
 <script>
 
   var launcherId = 'simon';
+  var liveListId = -1;
 
   $(document).ready(function(){
-    $("#button-load-list").click(function() {
+    refreshRevisionList(function() {
+      refreshAppList(liveListId);
+    });
+  });
+
+    var refreshRevisionList = function(callback) {
       $.ajax({
       url: 'api/com/?req={"ListRevisionReq":{"launcherId":"' + launcherId +'"}}',
       context: document.body
       }).done(function(result) {
-       var data = $.parseJSON(result); 
+       var data = $.parseJSON(result);
        var lists = data.ListRevisionResp.result.lists;
-       var liveListId = data.ListRevisionResp.result.liveList;
+       liveListId = data.ListRevisionResp.result.liveList;
        var editRevisionExists = false;
-       console.log(data);
        $(".lists-holder").html('');
+      
+       var editRevisionExists = false; 
        $(lists).each(function(index, list) {
-         var buttonText = list.changed + ' revision ' + list.id;
-         console.log(list);
-         if(liveListId == list.id) {
-           buttonText += ' [LIVE]';
-         } else if('1' == list.has_been_live) {
-           buttonText += ' [WAS LIVE]';
-         } else {
+         if('1' != list.has_been_live) {
            editRevisionExists = true;
-           buttonText += ' [EDIT]';
          }
-         var listsItem = 
-          '<input type="button" class="list-item" value="' + buttonText + '" data="' + list.id + '">';
-         $(".lists-holder").append(listsItem);
+         var listItem = listItemHtml(list);
+         $(".lists-holder").append(listItem);
        });
 
        $(".list-item").click(listsItemAction);
 
 
        if(!editRevisionExists) {
-       var buttonCreateRevision = 
+         var buttonCreateRevision =
          '<input type="button" class="button-create-revision" value="Edit" data="' + liveListId + '">';
-       $(".lists-holder").append(buttonCreateRevision);
-       $(".button-create-revision").click(createRevisionAction);
+         $(".lists-holder").append(buttonCreateRevision);
+         $(".button-create-revision").click(createRevisionAction);
        }
-      });
-    });
+       if(callback) {
+        callback.apply(data);
+       }
+     });
+   };
+
+    var listItemHtml = function(list) {
+      var buttonText = list.changed + ' revision ' + list.id;
+      if(liveListId == list.id) {
+        buttonText += ' [LIVE]';
+      } else if('1' == list.has_been_live) {
+        buttonText += ' [WAS LIVE]';
+      } else {
+        buttonText += ' [EDIT]';
+      }
+      var listItem =
+       '<input type="button" class="list-item" value="' + buttonText + '" data="' + list.id + '">';
+     return listItem;
+    };
 
     var listsItemAction = function() {
       var revision = $(this).attr('data');
@@ -71,7 +86,11 @@
       context: document.body
       }).done(function(result) {
         var obj = $.parseJSON(result);
-        console.log(obj);
+        refreshRevisionList();
+        var newListId = obj.NewListRevisionResp.result.list_id;
+        if(newListId) {
+          refreshAppList(newListId);
+        }
       });    
     };
 
@@ -82,7 +101,6 @@
       context: document.body
       }).done(function(result) {
         var obj = $.parseJSON(result);
-        console.log(obj);
         $(".list-holder").html(listHtml(obj.ListResp));
         if(obj.ListResp.hasBeenLive) {
           $(".list-holder").find(":input").prop("disabled", true);
@@ -110,8 +128,8 @@
       url: url,
       context: document.body
       }).done(function(result) {
-        refreshAppList(revision);
-        console.log(result);
+        refreshRevisionList();
+        refreshAppList(liveListId);
       });
     }
 
@@ -131,8 +149,8 @@
       url: url,
       context: document.body
       }).done(function(result) {
+        refreshRevisionList();
         refreshAppList(revision);
-        console.log(result);
       });
     }
 
@@ -160,7 +178,6 @@
       req.AddToListReq = AddToListReq;
       var reqStr = JSON.stringify(req);
 
-      console.log(reqStr);
       var url = 'api/com/?req=' + reqStr;
 
       $.ajax({
@@ -168,7 +185,6 @@
       context: document.body
       }).done(function(result) {
         refreshAppList(revision);
-        console.log(result);
       });
     };
 
@@ -182,7 +198,6 @@
       context: document.body
       }).done(function(result) {
         refreshAppList(appListId);
-        console.log(result);
       });
     }
 
@@ -193,7 +208,6 @@
       result += '<input type="button" class="button-delete-list" value="Discard">';
       result += '<input type="button" class="button-publish-list" value="Publish">';
       $(appList).each(function(index, item) {
-        console.log(item);
         var app = item.appTile;
 
         if(typeof(app.latitude) == 'undefined') {
@@ -235,6 +249,5 @@ result += '<input type="button" class="button-delete-app" value="X">';
       result += '</ul>';
       return result;
     };
-  });
 </script>
 
